@@ -4,4 +4,4 @@
 *.local
 **/.DS_Store
 **/node_modules/
-**/ambvir
+**/ambvir/
