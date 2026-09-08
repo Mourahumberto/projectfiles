@@ -1,0 +1,16 @@
+_format_version: "3.0"
+
+services:
+  - name: files-local
+    url: http://web:80
+    routes:
+      - name: files-local-route
+        paths:
+          - /local
+
+  - name: files-s3
+    url: http://web2:80
+    routes:
+      - name: files-s3-route
+        paths:
+          - /s3

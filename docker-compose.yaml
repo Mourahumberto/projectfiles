@@ -1,0 +1,55 @@
+version: '2.2'
+services:
+  web:
+    build: ./filesLocal
+    ports:
+      - "5001:80"
+    networks:
+    - elastic
+    volumes:
+      - files:/files
+  
+  web2:
+    build: ./filesS3
+    ports:
+      - "5002:80"
+    networks:
+    - elastic
+
+
+
+  kong:
+    image: kong:latest
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/config/kong.yml
+    volumes:
+      - ./kong:/kong/config
+    networks:
+      - elastic
+
+
+  keycloak:
+    image: quay.io/keycloak/keycloak
+    command: start-dev
+    ports:
+      - "8080:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    networks:
+    - elastic
+    volumes:
+      # Named volume to persist internal H2 database and realm data
+      - keycloak_data:/opt/keycloak/data/
+
+networks:
+  elastic:
+    driver: bridge
+
+volumes:
+  files:
+  keycloak_data:

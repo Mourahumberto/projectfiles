@@ -1,0 +1,46 @@
+:root {
+  --bg: #14120f;
+  --panel: #1d1a15;
+  --panel-border: #322c22;
+  --text: #f1ead6;
+  --text-muted: #a69c87;
+  --accent: #f2a93b;
+  --accent-dim: #7a5a20;
+  --danger: #e2604f;
+  --danger-dim: #4a2620;
+  --ok: #8fc19e;
+
+  --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+  --font-sans: 'Inter', system-ui, sans-serif;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
