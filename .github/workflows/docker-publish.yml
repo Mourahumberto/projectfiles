@@ -28,4 +28,4 @@ jobs:
         with:
           context: ./filesLocal
           push: true
-          tags: docker push netomoura10/localfiles:tagname
+          tags: netomoura10/localfiles:latest
