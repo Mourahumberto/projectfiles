@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Header, Depends
+from fastapi import FastAPI, HTTPException, UploadFile, File, Header, Depends, Query
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
@@ -77,32 +77,53 @@ async def root():
 # def list_object(user=Depends(get_current_user)):
 
 @app.get("/local/objects", tags=["Objetos"], summary="Listar objetos")
-def list_object():
-    caminho = Path("/files")
+def list_object(pasta: str = Query(default="")):
+    pasta_base = Path("/files").resolve()
+
+    # Se pasta não for informada, utiliza /files
+    caminho = (pasta_base / pasta).resolve()
+
+    # Impede acesso a diretórios fora de /files
+    if not caminho.is_relative_to(pasta_base):
+        raise HTTPException(
+            status_code=400,
+            detail="Caminho inválido"
+        )
+
+    if not caminho.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Pasta não encontrada"
+        )
+
+    if not caminho.is_dir():
+        raise HTTPException(
+            status_code=400,
+            detail="O caminho informado não é uma pasta"
+        )
 
     arquivos = []
     pastas = []
-    
-    # Executa a sua lógica de varredura
+
     for item in caminho.iterdir():
         if item.is_file():
             arquivos.append(item.name)
         elif item.is_dir():
             pastas.append(item.name)
-            
-    # Retorna uma estrutura JSON limpa
+
     return {
-        "caminho_solicitado": str(caminho.resolve()),
+        "caminho_solicitado": str(caminho),
         "total_arquivos": len(arquivos),
         "total_pastas": len(pastas),
         "arquivos": arquivos,
         "pastas": pastas
     }
 
-@app.post("/local/objects", tags=["Objetos"], summary="Listar objetos")
-def fazer_upload(arquivo: UploadFile = File(...)):
-    pasta_destino = Path("/files")
-     
+@app.post("/local/objects/{caminho_arquivo:path}", tags=["Objetos"], summary="Listar objetos")
+def fazer_upload(caminho_arquivo: str, arquivo: UploadFile = File(...)):
+    pasta_destino = Path(f"/files/{caminho_arquivo}").resolve()
+    pasta_destino.mkdir(parents=True, exist_ok=True)
+
     # 2. Define o caminho completo onde o arquivo será salvo
     caminho_arquivo_final = pasta_destino / arquivo.filename
     
@@ -122,10 +143,10 @@ def fazer_upload(arquivo: UploadFile = File(...)):
         "tamanho_bytes": caminho_arquivo_final.stat().st_size
     }
 
-@app.delete("/local/objects/{nome_arquivo}")
-def deletar_arquivo(nome_arquivo: str):
+@app.delete("/local/objects/{caminho_arquivo:path}", tags=["Objetos"], summary="Deletar arquivo")
+def deletar_arquivo(caminho_arquivo: str):
     pasta = Path("/files").resolve()
-    arquivo = (pasta / nome_arquivo).resolve()
+    arquivo = (pasta / caminho_arquivo).resolve()
 
     if pasta not in arquivo.parents and arquivo != pasta:
         raise HTTPException(status_code=403, detail="Acesso negado.")
@@ -139,10 +160,10 @@ def deletar_arquivo(nome_arquivo: str):
         "mensagem": f"Arquivo '{arquivo.name}' deletado com sucesso!"
     }
 
-@app.get("/local/objects/{nome_arquivo}")
-def download_arquivo(nome_arquivo: str):
+@app.get("/local/objects/{caminho_arquivo:path}", tags=["Objetos"], summary="Download de arquivo")
+def download_arquivo(caminho_arquivo: str):
     pasta = Path("/files").resolve()
-    arquivo = (pasta / nome_arquivo).resolve()
+    arquivo = (pasta / caminho_arquivo).resolve()
 
     # Impede acesso a arquivos fora de /files
     if pasta not in arquivo.parents and arquivo != pasta:
