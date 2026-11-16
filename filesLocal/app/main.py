@@ -119,29 +119,59 @@ def list_object(pasta: str = Query(default="")):
         "pastas": pastas
     }
 
-@app.post("/local/objects/{caminho_arquivo:path}", tags=["Objetos"], summary="Listar objetos")
-def fazer_upload(caminho_arquivo: str, arquivo: UploadFile = File(...)):
-    pasta_destino = Path(f"/files/{caminho_arquivo}").resolve()
+@app.post("/local/objects", tags=["Objetos"], summary="Enviar múltiplos arquivos")
+def fazer_upload(
+    arquivos: list[UploadFile] = File(...),
+    pasta: str = Query(default="")
+):
+    pasta_base = Path("/files").resolve()
+    pasta_destino = (pasta_base / pasta).resolve()
+
+    if not pasta_destino.is_relative_to(pasta_base):
+        raise HTTPException(status_code=400, detail="Pasta inválida")
+
     pasta_destino.mkdir(parents=True, exist_ok=True)
 
-    # 2. Define o caminho completo onde o arquivo será salvo
-    caminho_arquivo_final = pasta_destino / arquivo.filename
-    
+    resultados = []
+
     try:
-        # 3. Salva o arquivo no disco de forma eficiente (em blocos)
-        with caminho_arquivo_final.open("wb") as buffer:
-            shutil.copyfileobj(arquivo.file, buffer)
-            
+        for arquivo in arquivos:
+            nome_arquivo = Path(arquivo.filename or "").name
+
+            if not nome_arquivo:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Nome de arquivo inválido"
+                )
+
+            caminho_final = pasta_destino / nome_arquivo
+
+            with caminho_final.open("wb") as buffer:
+                shutil.copyfileobj(arquivo.file, buffer)
+
+            resultados.append({
+                "arquivo": nome_arquivo,
+                "caminho_completo": str(caminho_final),
+                "tamanho_bytes": caminho_final.stat().st_size
+            })
+
+        return {
+            "mensagem": "Upload concluído",
+            "total_arquivos": len(resultados),
+            "arquivos": resultados
+        }
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao salvar o arquivo: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao salvar arquivos: {str(e)}"
+        )
     finally:
-        arquivo.file.close() # Garante o fechamento do arquivo temporário
-        
-    return {
-        "mensagem": f"Arquivo '{arquivo.filename}' enviado com sucesso!",
-        "caminho_completo": str(caminho_arquivo_final.resolve()),
-        "tamanho_bytes": caminho_arquivo_final.stat().st_size
-    }
+        for arquivo in arquivos:
+            arquivo.file.close()
+
 
 @app.delete("/local/objects/{caminho_arquivo:path}", tags=["Objetos"], summary="Deletar arquivo")
 def deletar_arquivo(caminho_arquivo: str):
